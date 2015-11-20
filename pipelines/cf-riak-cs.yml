@@ -60,7 +60,7 @@ resources:
     target: {{initial_env_bosh_url}}
     username: {{initial_env_bosh_username}}
     password: {{initial_env_bosh_password}}
-    deployment: {{initial_env_deployment_name}}
+    deployment: {{initial_env_riak_cs_deployment_name}}
     ignore_ssl: true
 
 - name: integration-deployment
@@ -69,7 +69,7 @@ resources:
     target: {{integration_env_bosh_url}}
     username: {{integration_env_bosh_username}}
     password: {{integration_env_bosh_password}}
-    deployment: {{integration_env_deployment_name}}
+    deployment: {{integration_env_riak_cs_deployment_name}}
     ignore_ssl: true
 
 - name: intial-environment
@@ -195,7 +195,7 @@ jobs:
         - name: cf-riak-cs-ci
         params:
           ENV: {{initial_env_name}}
-          DEPLOYMENT_NAME: {{initial_env_deployment_name}}
+          DEPLOYMENT_NAME: {{initial_env_riak_cs_deployment_name}}
           BOSH_USER: {{initial_env_bosh_username}}
           BOSH_PASSWORD: {{initial_env_bosh_password}}
           ERRAND: broker-deregistrar
@@ -210,7 +210,7 @@ jobs:
       - name: cf-riak-cs-ci
       params:
         ENV: {{initial_env_name}}
-        DEPLOYMENT_NAME: {{initial_env_deployment_name}}
+        DEPLOYMENT_NAME: {{initial_env_riak_cs_deployment_name}}
         BOSH_USER: {{initial_env_bosh_username}}
         BOSH_PASSWORD: {{initial_env_bosh_password}}
       run:
@@ -278,7 +278,7 @@ jobs:
         ENV: {{initial_env_name}}
         BOSH_USER: {{initial_env_bosh_username}}
         BOSH_PASSWORD: {{initial_env_bosh_password}}
-        DEPLOYMENT_NAME: {{initial_env_deployment_name}}
+        DEPLOYMENT_NAME: {{initial_env_riak_cs_deployment_name}}
         ERRAND: broker-registrar
       run:
         path: cf-riak-cs-ci/scripts/bosh/run_errand
@@ -292,7 +292,7 @@ jobs:
         ENV: {{initial_env_name}}
         BOSH_USER: {{initial_env_bosh_username}}
         BOSH_PASSWORD: {{initial_env_bosh_password}}
-        DEPLOYMENT_NAME: {{initial_env_deployment_name}}
+        DEPLOYMENT_NAME: {{initial_env_riak_cs_deployment_name}}
         ERRAND: acceptance-tests
       run:
         path: cf-riak-cs-ci/scripts/bosh/run_errand
@@ -577,7 +577,7 @@ jobs:
         - name: cf-riak-cs-ci
       params:
         ENV: {{integration_env_name}}
-        DEPLOYMENT_NAME: {{integration_env_deployment_name}}
+        DEPLOYMENT_NAME: {{integration_env_riak_cs_deployment_name}}
         BOSH_USER: {{integration_env_bosh_username}}
         BOSH_PASSWORD: {{integration_env_bosh_password}}
         ERRAND: broker-registrar
@@ -591,7 +591,7 @@ jobs:
         - name: cf-riak-cs-ci
       params:
         ENV: {{integration_env_name}}
-        DEPLOYMENT_NAME: {{integration_env_deployment_name}}
+        DEPLOYMENT_NAME: {{integration_env_riak_cs_deployment_name}}
         BOSH_USER: {{integration_env_bosh_username}}
         BOSH_PASSWORD: {{integration_env_bosh_password}}
         ERRAND: acceptance-tests
