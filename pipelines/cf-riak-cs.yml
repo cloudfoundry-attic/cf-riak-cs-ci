@@ -1,0 +1,645 @@
+---
+### RESOURCES
+resources:
+- name: cf-riak-cs-ci-image
+  type: docker-image
+  source:
+    username: {{cf-docker-username}}
+    email: {{cf-docker-email}}
+    password: {{cf-docker-password}}
+    repository: cloudfoundry/cf-riak-cs-ci
+
+- name: initial-env-bosh-stemcell
+  type: bosh-io-stemcell
+  source:
+    name: {{initial_env_stemcell_name}}
+
+- name: integration-env-bosh-stemcell
+  type: bosh-io-stemcell
+  source:
+    name: {{integration_env_stemcell_name}}
+
+- name: bosh-lite-stemcell
+  type: bosh-io-stemcell
+  source:
+    name: bosh-warden-boshlite-ubuntu-trusty-go_agent
+
+- name: deployments-configuration
+  type: git
+  source:
+    uri: {{deployments_config_repo_uri}}
+    private_key: {{git-private-key}}
+
+- name: cf-riak-cs-ci
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry-incubator/cf-riak-cs-ci.git
+
+- name: cf-riak-cs-release
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry/cf-riak-cs-release.git
+    branch: develop
+
+- name: cf-riak-cs-release-master
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry/cf-riak-cs-release.git
+    branch: master
+
+- name: cf-riak-cs-release-rc
+  type: git
+  source:
+    uri: git@github.com:cloudfoundry/cf-riak-cs-release
+    branch: release-candidate
+    private_key: {{git-writer-private-key}}
+
+- name: initial-deployment
+  type: bosh-deployment
+  source:  
+    target: {{initial_env_bosh_url}}
+    username: {{initial_env_bosh_username}}
+    password: {{initial_env_bosh_password}}
+    deployment: {{initial_env_deployment_name}}
+    ignore_ssl: true
+
+- name: integration-deployment
+  type: bosh-deployment
+  source:
+    target: {{integration_env_bosh_url}}
+    username: {{integration_env_bosh_username}}
+    password: {{integration_env_bosh_password}}
+    deployment: {{integration_env_deployment_name}}
+    ignore_ssl: true
+
+- name: intial-environment
+  type: pool
+  source:
+    uri: {{env_pool_repo_uri}}
+    branch: master
+    pool: {{initial_env_pool}}
+    private_key: {{git-writer-private-key}}
+
+- name: integration-environment
+  type: pool
+  source:
+    uri: {{env_pool_repo_uri}}
+    branch: master
+    pool: {{integration_env_pool}}
+    private_key: {{git-writer-private-key}}
+
+- name: bosh-lite-environment
+  type: pool
+  source:
+    uri: {{env_pool_repo_uri}}
+    branch: master
+    pool: {{bosh_lite_env_pool}}
+    private_key: {{git-writer-private-key}}
+
+- name: bosh-lite-deployment
+  type: bosh-deployment
+  source:
+    username: {{bosh-lite-username}}
+    password: {{bosh-lite-password}}
+    deployment: cf-warden-riak-cs
+    ignore_ssl: true
+
+- name: cf-riak-cs-final-release
+  type: bosh-io-release
+  source:
+    repository: cloudfoundry/cf-riak-cs-release
+
+- name: cf-riak-cs-rc-artifacts
+  type: s3
+  source:
+    bucket: cf-riak-cs-releases
+    regexp: release-candidate\/cf-riak-cs-.*\.tgz
+    access_key_id: {{cf-riak-cs-ci-aws-access-key-id}}
+    secret_access_key: {{cf-riak-cs-ci-aws-secret-access-key}}
+
+### JOBS
+jobs:
+- name: cf-riak-cs-ci
+  plan:
+  - get: cf-riak-cs-release
+    trigger: true
+  - put: cf-riak-cs-ci-image
+    params:
+      build: cf-riak-cs-release/scripts/ci/
+      cache: true
+
+- name: test-unit
+  plan:
+  - aggregate:
+    - get: cf-riak-cs-release
+      passed: [cf-riak-cs-ci]
+      trigger: true
+  - task: test-unit
+    config:
+      platform: &platform linux
+      image: &image docker:///cloudfoundry/cf-riak-cs-ci
+      inputs:
+      - name: cf-riak-cs-release
+      run:
+        path: cf-riak-cs-release/scripts/test-unit
+
+- name: test-sample-stubs
+  plan:
+  - aggregate:
+    - get: cf-riak-cs-release
+      passed: [cf-riak-cs-ci]
+      trigger: true
+  - task: test-sample-stubs
+    config:
+      platform: *platform
+      image: *image
+      inputs:
+      - name: cf-riak-cs-release
+      run:
+        path: cf-riak-cs-release/scripts/test_sample_stubs
+
+- name: claim-intial-environment
+  plan:
+  - aggregate:
+    - get: cf-riak-cs-release
+      passed: [test-sample-stubs, test-unit]
+      trigger: true
+    - put: intial-environment
+      params:
+        acquire: true
+
+- name: release-intial-environment-manual
+  plan:
+  - aggregate:
+    - get: intial-environment
+      passed: [claim-intial-environment]
+  - put: intial-environment
+    params:
+      release: intial-environment
+
+- name: delete-initial-deployment
+  plan:
+  - aggregate:
+    - get: intial-environment
+      passed: [claim-intial-environment]
+    - get: cf-riak-cs-release
+      passed: [claim-intial-environment]
+      trigger: true
+    - get: cf-riak-cs-ci
+  - try: 
+      task: run-broker-deregistrar
+      config:
+        platform: *platform
+        image: *image
+        inputs:
+        - name: cf-riak-cs-ci
+        params:
+          ENV: {{initial_env_name}}
+          DEPLOYMENT_NAME: {{initial_env_deployment_name}}
+          BOSH_USER: {{initial_env_bosh_username}}
+          BOSH_PASSWORD: {{initial_env_bosh_password}}
+          ERRAND: broker-deregistrar
+          SKIP_IF_NO_DEPLOYMENT: true
+        run:
+          path: cf-riak-cs-ci/scripts/bosh/run_errand
+  - task: delete-initial-deployment
+    config:
+      platform: *platform
+      image: *image
+      inputs:
+      - name: cf-riak-cs-ci
+      params:
+        ENV: {{initial_env_name}}
+        DEPLOYMENT_NAME: {{initial_env_deployment_name}}
+        BOSH_USER: {{initial_env_bosh_username}}
+        BOSH_PASSWORD: {{initial_env_bosh_password}}
+      run:
+        path: cf-riak-cs-ci/scripts/bosh/delete_deployment
+
+- name: deploy-to-initial
+  plan:
+  - aggregate:
+    - get: deployments-configuration
+    - get: cf-riak-cs-ci
+    - get: cf-riak-cs-release
+      passed: [delete-initial-deployment]
+      trigger: true
+    - get: initial-env-bosh-stemcell
+    - get: intial-environment
+      passed: [delete-initial-deployment]
+  - aggregate:
+    - &create-release
+      task: create-release
+      config:
+        platform: *platform
+        image: *image
+        inputs:
+        - name: cf-riak-cs-ci
+        - name: cf-riak-cs-release
+        params:
+          RELEASE_RELATIVE_DIR: cf-riak-cs-release/
+        run:
+          path: cf-riak-cs-ci/scripts/create_release
+    - task: make-manifest
+      config:
+        platform: *platform
+        image: *image
+        inputs:
+        - name: deployments-configuration
+        - name: cf-riak-cs-ci
+        - name: cf-riak-cs-release
+        params:
+          ENV: {{initial_env_name}}
+          DEPLOYMENTS_DIR: deployments-configuration
+        run:
+          path: cf-riak-cs-ci/scripts/bosh/make_manifest
+  - put: initial-deployment
+    params:
+      manifest: make-manifest/cf-riak-cs-release/deployment.yml
+      releases: [create-release/cf-riak-cs-release/dev_releases/cf-riak-cs/*.tgz]
+      stemcells: [initial-env-bosh-stemcell/*.tgz]
+
+- name: run-smoke-tests-initial
+  plan:
+  - aggregate:
+    - get: intial-environment
+      passed: [deploy-to-initial]
+    - get: cf-riak-cs-release
+      passed: [deploy-to-initial]
+      trigger: true
+    - get: cf-riak-cs-ci
+  - task: run-broker-registrar
+    config:
+      platform: *platform
+      image: *image
+      inputs:
+        - name: cf-riak-cs-ci
+      params:
+        ENV: {{initial_env_name}}
+        BOSH_USER: {{initial_env_bosh_username}}
+        BOSH_PASSWORD: {{initial_env_bosh_password}}
+        DEPLOYMENT_NAME: {{initial_env_deployment_name}}
+        ERRAND: broker-registrar
+      run:
+        path: cf-riak-cs-ci/scripts/bosh/run_errand
+  - task: run-smoke-tests
+    config:
+      platform: *platform
+      image: *image
+      inputs:
+        - name: cf-riak-cs-ci
+      params:
+        ENV: {{initial_env_name}}
+        BOSH_USER: {{initial_env_bosh_username}}
+        BOSH_PASSWORD: {{initial_env_bosh_password}}
+        DEPLOYMENT_NAME: {{initial_env_deployment_name}}
+        ERRAND: acceptance-tests
+      run:
+        path: cf-riak-cs-ci/scripts/bosh/run_errand
+
+- name: release-aws-environmment
+  plan:
+  - get: cf-riak-cs-release
+    passed: [run-smoke-tests-initial]
+    trigger: true
+  - get: intial-environment
+    passed: [run-smoke-tests-initial]
+    trigger: true
+  - put: intial-environment
+    params:
+      release: intial-environment
+
+### UPGRADE
+- name: claim-bosh-lite-upgrade
+  plan:
+  - aggregate:
+    - get: cf-riak-cs-release
+      passed: [run-smoke-tests-initial]
+      trigger: true
+    - put: bosh-lite-environment
+      params:
+        acquire: true
+
+- name: release-upgrade-environment-manual
+  plan:
+  - aggregate:
+    - get: bosh-lite-environment
+      passed: [claim-bosh-lite-upgrade]
+  - put: bosh-lite-environment
+    params:
+      release: bosh-lite-environment
+
+- name: delete-upgrade-deployment
+  plan:
+  - aggregate:
+    - get: cf-riak-cs-release
+      passed: [claim-bosh-lite-upgrade]
+      trigger: true
+    - get: bosh-lite-environment
+      passed: [claim-bosh-lite-upgrade]
+      trigger: true
+    - get: cf-riak-cs-ci
+  - &broker-deregistrar-bosh-lite
+    task: run-broker-deregistrar
+    config:
+      platform: *platform
+      image: *image
+      inputs:
+        - name: bosh-lite-environment
+        - name: cf-riak-cs-ci
+      params:
+        DIRECTOR_IP_FILE: bosh-lite-environment/name
+        BOSH_USER: {{bosh-lite-username}}
+        BOSH_PASSWORD_FILE: bosh-lite-environment/metadata
+        DEPLOYMENT_NAME: cf-warden-riak-cs
+        ERRAND: broker-deregistrar
+      run:
+        path: cf-riak-cs-ci/scripts/bosh-lite/run_errand
+  - &delete-deployment-bosh-lite
+    task: delete-deployment
+    config:
+      platform: *platform
+      image: *image
+      inputs:
+        - name: bosh-lite-environment
+        - name: cf-riak-cs-ci
+      params:
+        DIRECTOR_IP_FILE: bosh-lite-environment/name
+        BOSH_USER: {{bosh-lite-username}}
+        BOSH_PASSWORD_FILE: bosh-lite-environment/metadata
+        DEPLOYMENT_NAME: cf-warden-riak-cs
+      run:
+        path: cf-riak-cs-ci/scripts/bosh-lite/delete-deployment
+
+- name: deploy-previous-to-upgrade
+  plan:
+  - aggregate:
+    - get: cf-riak-cs-ci
+    - get: cf-riak-cs-release
+      resource: cf-riak-cs-release-master
+    - get: bosh-lite-stemcell
+    - get: bosh-lite-environment
+      passed: [delete-upgrade-deployment]
+      trigger: true
+    - get: cf-riak-cs-final-release
+  - &make-manifest-bosh-lite
+    task: make-manifest
+    config:
+      platform: *platform
+      image: *image
+      inputs:
+      - name: cf-riak-cs-ci
+      - name: cf-riak-cs-release
+      - name: bosh-lite-environment
+      params:
+        OUTPUT_FILE: cf-riak-cs-release/deployment.yml
+        BOSH_LITE_METADATA: bosh-lite-environment/metadata
+      run:
+        path: cf-riak-cs-ci/scripts/bosh-lite/make_manifest
+  - put: bosh-lite-deployment
+    params:
+      target_file: bosh-lite-environment/name
+      manifest: make-manifest/cf-riak-cs-release/deployment.yml
+      releases: [cf-riak-cs-final-release/release.tgz]
+      stemcells: [bosh-lite-stemcell/*.tgz]
+
+- name: broker-registrar-previous-on-upgrade
+  plan:
+  - aggregate:
+    - get: cf-riak-cs-ci
+    - get: cf-riak-cs-release
+      # we don't use current cf-riak-cs in deploy stage
+      passed: [delete-upgrade-deployment]
+    - get: bosh-lite-environment
+      passed: [deploy-previous-to-upgrade]
+      trigger: true
+  - &broker-registrar-bosh-lite
+    task: run-broker-registrar
+    config:
+      platform: *platform
+      image: *image
+      inputs:
+        - name: cf-riak-cs-ci
+        - name: bosh-lite-environment
+      params:
+        DIRECTOR_IP_FILE: bosh-lite-environment/name
+        BOSH_USER: {{bosh-lite-username}}
+        BOSH_PASSWORD_FILE: bosh-lite-environment/metadata
+        DEPLOYMENT_NAME: cf-warden-riak-cs
+        ERRAND: broker-registrar
+      run:
+        path: cf-riak-cs-ci/scripts/bosh-lite/run_errand
+
+- name: smoke-tests-previous-on-upgrade
+  plan:
+  - aggregate:
+    - get: cf-riak-cs-ci
+    - get: cf-riak-cs-release
+      passed: [broker-registrar-previous-on-upgrade]
+      trigger: true
+    - get: bosh-lite-environment
+      passed: [broker-registrar-previous-on-upgrade]
+      trigger: true
+  - &smoke-tests-bosh-lite
+    task: run-smoke-tests
+    config:
+      platform: *platform
+      image: *image
+      inputs:
+        - name: cf-riak-cs-ci
+        - name: bosh-lite-environment
+      params:
+        DIRECTOR_IP_FILE: bosh-lite-environment/name
+        BOSH_USER: {{bosh-lite-username}}
+        BOSH_PASSWORD_FILE: bosh-lite-environment/metadata
+        DEPLOYMENT_NAME: cf-warden-riak-cs
+        ERRAND: acceptance-tests
+      run:
+        path: cf-riak-cs-ci/scripts/bosh-lite/run_errand
+
+- name: deploy-current-to-upgrade
+  plan:
+  - aggregate:
+    - get: cf-riak-cs-ci
+    - get: cf-riak-cs-release
+      passed: [smoke-tests-previous-on-upgrade]
+      trigger: true
+    - get: bosh-lite-stemcell
+    - get: bosh-lite-environment
+      passed: [smoke-tests-previous-on-upgrade]
+      trigger: true
+  - aggregate:
+    - *create-release
+    - *make-manifest-bosh-lite
+  - put: bosh-lite-deployment
+    params:
+      target_file: bosh-lite-environment/name
+      manifest: make-manifest/cf-riak-cs-release/deployment.yml
+      releases: [create-release/cf-riak-cs-release/dev_releases/cf-riak-cs/*.tgz]
+      stemcells: [bosh-lite-stemcell/*.tgz]
+
+- name: smoke-tests-current-on-upgrade
+  plan:
+  - aggregate:
+    - get: cf-riak-cs-ci
+    - get: cf-riak-cs-release
+      passed: [deploy-current-to-upgrade]
+      trigger: true
+    - get: bosh-lite-environment
+      passed: [deploy-current-to-upgrade]
+      trigger: true
+  - *smoke-tests-bosh-lite
+
+- name: release-upgrade-environment
+  plan:
+  - aggregate:
+    - get: cf-riak-cs-release
+      passed: [smoke-tests-current-on-upgrade]
+      trigger: true
+    - get: bosh-lite-environment
+      passed: [smoke-tests-current-on-upgrade]
+      trigger: true
+  - put: bosh-lite-environment
+    params:
+      release: bosh-lite-environment
+
+### INTEGRATION DEPLOY
+- name: claim-integration-environment
+  plan:
+  - aggregate:
+    - get: cf-riak-cs-release
+      passed: [release-upgrade-environment]
+      trigger: true
+  - put: integration-environment
+    params:
+      acquire: true
+
+- name: deploy-to-integration
+  serial: true
+  plan:
+  - aggregate:
+    - get: deployments-configuration
+    - get: cf-riak-cs-ci
+    - get: cf-riak-cs-release
+      passed: [claim-integration-environment]
+      trigger: true
+    - get: integration-env-bosh-stemcell
+    - get: integration-environment
+      passed: [claim-integration-environment]
+      trigger: true
+  - aggregate:
+    - *create-release
+    - task: make-manifest
+      config:
+        platform: *platform
+        image: *image
+        inputs:
+        - name: deployments-configuration
+        - name: cf-riak-cs-ci
+        - name: cf-riak-cs-release
+        params:
+          ENV: {{integration_env_name}}
+          DEPLOYMENTS_DIR: deployments-configuration
+        run:
+          path: cf-riak-cs-ci/scripts/bosh/make_manifest
+  - put: integration-deployment
+    params:
+      manifest: make-manifest/cf-riak-cs-release/deployment.yml
+      releases: [create-release/cf-riak-cs-release/dev_releases/cf-riak-cs/*.tgz]
+      stemcells: [integration-env-bosh-stemcell/*.tgz]
+
+- name: run-smoke-tests-integration
+  plan:
+  - aggregate:
+    - get: integration-environment
+      passed: [deploy-to-integration]
+    - get: cf-riak-cs-release
+      passed: [deploy-to-integration]
+      trigger: true
+    - get: cf-riak-cs-ci
+  - task: run-broker-registrar
+    config:
+      platform: *platform
+      image: *image
+      inputs:
+        - name: cf-riak-cs-ci
+      params:
+        ENV: {{integration_env_name}}
+        DEPLOYMENT_NAME: {{integration_env_deployment_name}}
+        BOSH_USER: {{integration_env_bosh_username}}
+        BOSH_PASSWORD: {{integration_env_bosh_password}}
+        ERRAND: broker-registrar
+      run:
+        path: cf-riak-cs-ci/scripts/bosh/run_errand
+  - task: run-smoke-tests
+    config:
+      platform: *platform
+      image: *image
+      inputs:
+        - name: cf-riak-cs-ci
+      params:
+        ENV: {{integration_env_name}}
+        DEPLOYMENT_NAME: {{integration_env_deployment_name}}
+        BOSH_USER: {{integration_env_bosh_username}}
+        BOSH_PASSWORD: {{integration_env_bosh_password}}
+        ERRAND: acceptance-tests
+      run:
+        path: cf-riak-cs-ci/scripts/bosh/run_errand
+
+- name: release-integration-environment
+  plan:
+  - aggregate:
+    - get: cf-riak-cs-release
+      passed: [run-smoke-tests-integration]
+      trigger: true
+    - get: integration-environment
+      passed: [run-smoke-tests-integration]
+      trigger: true
+  - put: integration-environment
+    params:
+      release: integration-environment
+
+- name: upload-rc-artifacts
+  plan:
+  - aggregate:
+    - get: cf-riak-cs-release
+      passed: [run-smoke-tests-integration]
+      trigger: true
+    - get: cf-riak-cs-ci
+  - task: create-rc-release-artifacts
+    config:
+      platform: *platform
+      image: *image
+      inputs:
+        - name: cf-riak-cs-ci
+        - name: cf-riak-cs-release
+      params:
+        RELEASE_RELATIVE_DIR: cf-riak-cs-release
+      run:
+        path: cf-riak-cs-ci/scripts/create_release
+  - put: cf-riak-cs-rc-artifacts
+    params:
+      from: create-rc-release-artifacts\/cf-riak-cs-release\/dev_releases\/cf-riak-cs\/cf-riak-cs.*\.tgz
+      to: release-candidate/
+
+- name: promote-to-rc
+  plan:
+  - aggregate:
+    - get: cf-riak-cs-release
+      passed: [run-smoke-tests-integration]
+      trigger: true
+      params:
+        fetch: [release-candidate]
+    - get: cf-riak-cs-ci
+  - task: merge-to-release-candidate
+    config:
+      platform: *platform
+      image: *image
+      inputs:
+        - name: cf-riak-cs-ci
+        - name: cf-riak-cs-release
+      run:
+        path: cf-riak-cs-ci/scripts/publish/merge-to-release-candidate
+  - put: cf-riak-cs-release-rc
+    params:
+      repository: merge-to-release-candidate/cf-riak-cs-release

@@ -1,0 +1,36 @@
+#!/bin/bash
+
+set -eux
+
+MY_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+CI_DIR="$( cd ${MY_DIR}/../.. && pwd )"
+WORKSPACE_DIR="$( cd ${CI_DIR}/.. && pwd )"
+RELEASE_DIR="$( cd ${WORKSPACE_DIR}/cf-riak-cs-release && pwd )"
+
+# ensure DEPLOYMENTS_DIR is an absolute path
+DEPLOYMENTS_DIR="${DEPLOYMENTS_DIR:?}"
+if [[ "${DEPLOYMENTS_DIR}" != /* ]]; then
+  DEPLOYMENTS_DIR="${WORKSPACE_DIR}/${DEPLOYMENTS_DIR}"
+fi
+
+echo "ENV: ${ENV:?}"
+
+bosh -n target bosh.${ENV}.cf-app.com
+
+echo "args: $*"
+
+pushd ${RELEASE_DIR}
+  ./generate_deployment_manifest \
+    aws \
+    /workspace/deployments-core-services/${ENV}/cf-aws-stub.yml \
+    /workspace/deployments-core-services/${ENV}/cf-networks-stub.yml \
+    /workspace/deployments-core-services/${ENV}/cf-shared-secrets.yml \
+    /workspace/deployments-core-services/${ENV}/cf-properties.yml \
+    /workspace/deployments-core-services/${ENV}/cf-riak-cs-secrets.yml \
+    "$@" > deployment.yml
+
+  bosh deployment deployment.yml
+  cat deployment.yml
+popd
+
+echo "Manifest generated successfully"
