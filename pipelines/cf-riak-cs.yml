@@ -353,6 +353,7 @@ jobs:
         BOSH_PASSWORD_FILE: bosh-lite-environment/metadata
         DEPLOYMENT_NAME: cf-warden-riak-cs
         ERRAND: broker-deregistrar
+        SKIP_IF_NO_DEPLOYMENT: true
       run:
         path: cf-riak-cs-ci/scripts/bosh-lite/run_errand
   - &delete-deployment-bosh-lite
