@@ -1,0 +1,107 @@
+---
+resources:
+- name: cf-riak-cs-develop
+  type: git
+  source:
+    uri: git@github.com:cloudfoundry/cf-riak-cs-release.git
+    branch: develop
+    private_key: {{git-writer-private-key}}
+
+- name: cf-riak-cs-release-candidate
+  type: git
+  source:
+    uri: git@github.com:cloudfoundry/cf-riak-cs-release.git
+    branch: release-candidate
+    private_key: {{git-writer-private-key}}
+
+- name: cf-riak-cs-master
+  type: git
+  source:
+    uri: git@github.com:cloudfoundry/cf-riak-cs-release.git
+    branch: master
+    private_key: {{git-writer-private-key}}
+
+- name: cf-riak-cs-ci
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry-incubator/cf-riak-cs-ci.git
+
+- name: s3-resource-final-release
+  type: s3
+  source:
+    bucket: cf-riak-cs-releases
+    access_key_id: {{cf-riak-cs-ci-aws-access-key-id}}
+    secret_access_key: {{cf-riak-cs-ci-aws-secret-access-key}}
+
+- name: release-notes
+  type: s3
+  source:
+    bucket: cf-riak-cs-release-notes
+    regexp: RELEASE_NOTES_v(\d+)
+    access_key_id: {{cf-riak-cs-ci-aws-access-key-id}}
+    secret_access_key: {{cf-riak-cs-ci-aws-secret-access-key}}
+
+- name: publish-github-release
+  type: github-release
+  source:
+    user: cloudfoundry
+    repository: cf-riak-cs-release
+    access_token: {{git-writer-github-access-token}}
+
+jobs:
+  - name: final-release
+    plan:
+      - aggregate:
+        - get: cf-riak-cs-master
+          params:
+            fetch:
+            - release-candidate
+        - get: cf-riak-cs-ci
+        - get: release-notes
+          trigger: true
+      - task: final-release
+        config:
+          platform: linux
+          image: docker:///cloudfoundry/cf-riak-cs-ci
+          inputs:
+          - name: cf-riak-cs-ci
+          - name: cf-riak-cs-master
+            path: cf-riak-cs-release
+          - name: release-notes
+          run:
+            path: cf-riak-cs-ci/scripts/publish/cut-final-release
+          params:
+            RELEASE_NOTES_DIRECTORY: release-notes
+            OUTPUT_RELEASE_ARTIFACTS: release-artifacts
+            OUTPUT_RELEASE_TAG: cf-riak-cs-tag
+            OUTPUT_RELEASE_NOTES: generated-release-notes
+            OUTPUT_RELEASE_COMMIT: git-commit
+            RELEASE_ACCESS_KEY: {{cf-riak-cs-publish-blobs-aws-access-key-id}}
+            RELEASE_SECRET_KEY: {{cf-riak-cs-publish-blobs-aws-secret-access-key}}
+      - task: merge-master-into-develop
+        config:
+          platform: linux
+          image: docker:///cloudfoundry/cf-riak-cs-ci
+          inputs:
+          - name: cf-riak-cs-ci
+          - name: final-release
+          run:
+            path: cf-riak-cs-ci/scripts/publish/merge-master-into-develop
+      - put: cf-riak-cs-master
+        params:
+          repository: final-release/cf-riak-cs-release
+      - put: cf-riak-cs-develop
+        params:
+          repository: merge-master-into-develop/final-release/cf-riak-cs-release
+      - put: publish-github-release
+        params:
+          name: final-release/cf-riak-cs-tag
+          tag: final-release/cf-riak-cs-tag
+          body: final-release/generated-release-notes
+          commitish: final-release/git-commit
+          globs:
+          - final-release/release-artifacts/*.tgz
+      - put: s3-resource-final-release
+        params:
+          from: final\-release\/release\-artifacts\/.*\.tgz
+          to: final\/
