@@ -370,7 +370,7 @@ jobs:
         BOSH_PASSWORD_FILE: bosh-lite-environment/metadata
         DEPLOYMENT_NAME: cf-warden-riak-cs
       run:
-        path: cf-riak-cs-ci/scripts/bosh-lite/delete-deployment
+        path: cf-riak-cs-ci/scripts/bosh-lite/delete_deployment
 
 - name: deploy-previous-to-upgrade
   plan:
