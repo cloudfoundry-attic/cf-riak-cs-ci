@@ -24,7 +24,7 @@ function get_actual_release_version() {
   # get the previous release version and add 1
   pushd ${RELEASE_DIR} > /dev/null
     PREVIOUS_VERSION=$(ls releases/cf-riak-cs-*.yml | \
-      cut -d '-' -f3 | \
+      cut -d '-' -f4 | \
       cut -d '.' -f1 | \
       sort -n | \
       tail -1)

@@ -15,7 +15,7 @@ USE_PREVIOUS_RELEASE=${USE_PREVIOUS_RELEASE:-false}
 get_version() {
   if [ "${USE_PREVIOUS_RELEASE}" = true ]; then
   echo "$(find ${RELEASE_DIR}/releases/cf-riak-cs-* -type f -printf "%f\n" | \
-    cut -d '-' -f3              | \
+    cut -d '-' -f4              | \
     cut -d '.' -f1              | \
     sort -n                     | \
     tail -1)"
@@ -43,6 +43,7 @@ properties:
   - ${DOMAIN}
   cf:
     admin_password: ${CF_ADMIN_PASSWORD}
+    api_url: https://api.${DOMAIN}
 CI_STUB
 
 ${RELEASE_DIR}/generate_deployment_manifest \
