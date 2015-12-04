@@ -12,12 +12,12 @@ resources:
 - name: initial-env-bosh-stemcell
   type: bosh-io-stemcell
   source:
-    name: {{initial_env_stemcell_name}}
+    name: bosh-aws-xen-hvm-ubuntu-trusty-go_agent
 
 - name: integration-env-bosh-stemcell
   type: bosh-io-stemcell
   source:
-    name: {{integration_env_stemcell_name}}
+    name: bosh-aws-xen-hvm-ubuntu-trusty-go_agent
 
 - name: bosh-lite-stemcell
   type: bosh-io-stemcell
@@ -27,7 +27,7 @@ resources:
 - name: deployments-configuration
   type: git
   source:
-    uri: {{deployments_config_repo_uri}}
+    uri: git@github.com:pivotal-cf/deployments-core-services
     private_key: {{git-private-key}}
 
 - name: cf-riak-cs-ci
@@ -57,43 +57,43 @@ resources:
 - name: initial-deployment
   type: bosh-deployment
   source:  
-    target: {{initial_env_bosh_url}}
+    target: https://bosh.dijon.cf-app.com:25555
     username: {{initial_env_bosh_username}}
     password: {{initial_env_bosh_password}}
-    deployment: {{initial_env_riak_cs_deployment_name}}
+    deployment: cf-dijon-riak-cs
     ignore_ssl: true
 
 - name: integration-deployment
   type: bosh-deployment
   source:
-    target: {{integration_env_bosh_url}}
+    target: https://bosh.a1.cf-app.com:25555
     username: {{integration_env_bosh_username}}
     password: {{integration_env_bosh_password}}
-    deployment: {{integration_env_riak_cs_deployment_name}}
+    deployment: cf-a1-riak-cs
     ignore_ssl: true
 
-- name: intial-environment
+- name: initial-environment
   type: pool
   source:
-    uri: {{env_pool_repo_uri}}
+    uri: &pool-uri git@github.com:pivotal-cf-experimental/core-services-oss-env-resource-pool
     branch: master
-    pool: {{initial_env_pool}}
+    pool: aws
     private_key: {{git-writer-private-key}}
 
 - name: integration-environment
   type: pool
   source:
-    uri: {{env_pool_repo_uri}}
+    uri: *pool-uri
     branch: master
-    pool: {{integration_env_pool}}
+    pool: aws-integration
     private_key: {{git-writer-private-key}}
 
 - name: bosh-lite-environment
   type: pool
   source:
-    uri: {{env_pool_repo_uri}}
+    uri: *pool-uri
     branch: master
-    pool: {{bosh_lite_env_pool}}
+    pool: bosh-lites-working
     private_key: {{git-writer-private-key}}
 
 - name: bosh-lite-deployment
@@ -158,32 +158,32 @@ jobs:
       run:
         path: cf-riak-cs-release/scripts/test_sample_stubs
 
-- name: claim-intial-environment
+- name: claim-initial-environment
   plan:
   - aggregate:
     - get: cf-riak-cs-release
       passed: [test-sample-stubs, test-unit]
       trigger: true
-    - put: intial-environment
+    - put: initial-environment
       params:
         acquire: true
 
-- name: release-intial-environment-manual
+- name: release-initial-environment-manual
   plan:
   - aggregate:
-    - get: intial-environment
-      passed: [claim-intial-environment]
-  - put: intial-environment
+    - get: initial-environment
+      passed: [claim-initial-environment]
+  - put: initial-environment
     params:
-      release: intial-environment
+      release: initial-environment
 
 - name: delete-initial-deployment
   plan:
   - aggregate:
-    - get: intial-environment
-      passed: [claim-intial-environment]
+    - get: initial-environment
+      passed: [claim-initial-environment]
     - get: cf-riak-cs-release
-      passed: [claim-intial-environment]
+      passed: [claim-initial-environment]
       trigger: true
     - get: cf-riak-cs-ci
   - try: 
@@ -194,8 +194,8 @@ jobs:
         inputs:
         - name: cf-riak-cs-ci
         params:
-          ENV: {{initial_env_name}}
-          DEPLOYMENT_NAME: {{initial_env_riak_cs_deployment_name}}
+          ENV: dijon
+          DEPLOYMENT_NAME: cf-dijon-riak-cs
           BOSH_USER: {{initial_env_bosh_username}}
           BOSH_PASSWORD: {{initial_env_bosh_password}}
           ERRAND: broker-deregistrar
@@ -209,8 +209,8 @@ jobs:
       inputs:
       - name: cf-riak-cs-ci
       params:
-        ENV: {{initial_env_name}}
-        DEPLOYMENT_NAME: {{initial_env_riak_cs_deployment_name}}
+        ENV: dijon
+        DEPLOYMENT_NAME: cf-dijon-riak-cs
         BOSH_USER: {{initial_env_bosh_username}}
         BOSH_PASSWORD: {{initial_env_bosh_password}}
       run:
@@ -225,7 +225,7 @@ jobs:
       passed: [delete-initial-deployment]
       trigger: true
     - get: initial-env-bosh-stemcell
-    - get: intial-environment
+    - get: initial-environment
       passed: [delete-initial-deployment]
   - aggregate:
     - &create-release
@@ -249,7 +249,7 @@ jobs:
         - name: cf-riak-cs-ci
         - name: cf-riak-cs-release
         params:
-          ENV: {{initial_env_name}}
+          ENV: dijon
           DEPLOYMENTS_DIR: deployments-configuration
         run:
           path: cf-riak-cs-ci/scripts/bosh/make_manifest
@@ -262,7 +262,7 @@ jobs:
 - name: run-smoke-tests-initial
   plan:
   - aggregate:
-    - get: intial-environment
+    - get: initial-environment
       passed: [deploy-to-initial]
     - get: cf-riak-cs-release
       passed: [deploy-to-initial]
@@ -275,10 +275,10 @@ jobs:
       inputs:
         - name: cf-riak-cs-ci
       params:
-        ENV: {{initial_env_name}}
+        ENV: dijon
         BOSH_USER: {{initial_env_bosh_username}}
         BOSH_PASSWORD: {{initial_env_bosh_password}}
-        DEPLOYMENT_NAME: {{initial_env_riak_cs_deployment_name}}
+        DEPLOYMENT_NAME: cf-dijon-riak-cs
         ERRAND: broker-registrar
       run:
         path: cf-riak-cs-ci/scripts/bosh/run_errand
@@ -289,10 +289,10 @@ jobs:
       inputs:
         - name: cf-riak-cs-ci
       params:
-        ENV: {{initial_env_name}}
+        ENV: dijon
         BOSH_USER: {{initial_env_bosh_username}}
         BOSH_PASSWORD: {{initial_env_bosh_password}}
-        DEPLOYMENT_NAME: {{initial_env_riak_cs_deployment_name}}
+        DEPLOYMENT_NAME: cf-dijon-riak-cs
         ERRAND: acceptance-tests
       run:
         path: cf-riak-cs-ci/scripts/bosh/run_errand
@@ -302,12 +302,12 @@ jobs:
   - get: cf-riak-cs-release
     passed: [run-smoke-tests-initial]
     trigger: true
-  - get: intial-environment
+  - get: initial-environment
     passed: [run-smoke-tests-initial]
     trigger: true
-  - put: intial-environment
+  - put: initial-environment
     params:
-      release: intial-environment
+      release: initial-environment
 
 ### UPGRADE
 - name: claim-bosh-lite-upgrade
@@ -551,7 +551,7 @@ jobs:
         - name: cf-riak-cs-ci
         - name: cf-riak-cs-release
         params:
-          ENV: {{integration_env_name}}
+          ENV: a1
           DEPLOYMENTS_DIR: deployments-configuration
         run:
           path: cf-riak-cs-ci/scripts/bosh/make_manifest
@@ -577,8 +577,8 @@ jobs:
       inputs:
         - name: cf-riak-cs-ci
       params:
-        ENV: {{integration_env_name}}
-        DEPLOYMENT_NAME: {{integration_env_riak_cs_deployment_name}}
+        ENV: a1
+        DEPLOYMENT_NAME: cf-a1-riak-cs
         BOSH_USER: {{integration_env_bosh_username}}
         BOSH_PASSWORD: {{integration_env_bosh_password}}
         ERRAND: broker-registrar
@@ -591,8 +591,8 @@ jobs:
       inputs:
         - name: cf-riak-cs-ci
       params:
-        ENV: {{integration_env_name}}
-        DEPLOYMENT_NAME: {{integration_env_riak_cs_deployment_name}}
+        ENV: a1
+        DEPLOYMENT_NAME: cf-a1-riak-cs
         BOSH_USER: {{integration_env_bosh_username}}
         BOSH_PASSWORD: {{integration_env_bosh_password}}
         ERRAND: acceptance-tests
