@@ -22,11 +22,11 @@ echo "args: $*"
 pushd ${RELEASE_DIR}
   ./generate_deployment_manifest \
     aws \
-    ${DEPLOYMENTS_DIR}/${ENV}/cf-aws-stub.yml \
-    ${DEPLOYMENTS_DIR}/${ENV}/cf-networks-stub.yml \
-    ${DEPLOYMENTS_DIR}/${ENV}/cf-shared-secrets.yml \
-    ${DEPLOYMENTS_DIR}/${ENV}/cf-properties.yml \
-    ${DEPLOYMENTS_DIR}/${ENV}/cf-riak-cs-secrets.yml \
+    ${DEPLOYMENTS_DIR}/${ENV}/stubs/cf/cf-aws-stub.yml \
+    ${DEPLOYMENTS_DIR}/${ENV}/stubs/cf/cf-networks-stub.yml \
+    ${DEPLOYMENTS_DIR}/${ENV}/stubs/cf/cf-shared-secrets.yml \
+    ${DEPLOYMENTS_DIR}/${ENV}/stubs/cf/cf-properties.yml \
+    ${DEPLOYMENTS_DIR}/${ENV}/stubs/riak-cs/cf-riak-cs-secrets.yml \
     "$@" > deployment.yml
 
   bosh deployment deployment.yml
