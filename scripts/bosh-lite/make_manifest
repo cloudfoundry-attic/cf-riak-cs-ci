@@ -6,7 +6,6 @@ MY_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 CI_DIR="$( cd ${MY_DIR}/../.. && pwd )"
 WORKSPACE_DIR="$( cd ${CI_DIR}/.. && pwd )"
 RELEASE_DIR="$( cd ${WORKSPACE_DIR}/cf-riak-cs-release && pwd )"
-
 OUTPUT_FILE=${OUTPUT_FILE:?}
 DOMAIN=$(cat "${BOSH_LITE_METADATA:?}" | jq -r '.domain' )
 CF_ADMIN_PASSWORD=$(cat "${BOSH_LITE_METADATA:?}" | jq -r '.cf_password' )

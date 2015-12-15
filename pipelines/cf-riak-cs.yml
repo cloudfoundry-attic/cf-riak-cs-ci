@@ -65,8 +65,8 @@ resources:
   type: bosh-deployment
   source:  
     target: https://bosh.dijon.cf-app.com:25555
-    username: {{initial_env_bosh_username}}
-    password: {{initial_env_bosh_password}}
+    username: {{aws_bosh_username}}
+    password: {{aws_bosh_password}}
     deployment: cf-dijon-riak-cs
     ignore_ssl: true
 
@@ -132,7 +132,7 @@ jobs:
     trigger: true
   - put: cf-riak-cs-ci-image
     params:
-      build: cf-riak-cs-release/scripts/ci/
+      build: cf-riak-cs-dockerfile/scripts/
       cache: true
 
 - name: test-unit
@@ -198,11 +198,10 @@ jobs:
         image: *image
         inputs:
         - name: cf-riak-cs-ci
+        - name: initial-environment
         params:
-          ENV: dijon
-          DEPLOYMENT_NAME: cf-dijon-riak-cs
-          BOSH_USER: {{initial_env_bosh_username}}
-          BOSH_PASSWORD: {{initial_env_bosh_password}}
+          ENV_TARGET_FILE: initial-environment/name
+          ENV_METADATA: initial-environment/metadata
           ERRAND: broker-deregistrar
           SKIP_IF_NO_DEPLOYMENT: true
         run:
@@ -213,11 +212,10 @@ jobs:
       image: *image
       inputs:
       - name: cf-riak-cs-ci
+      - name: initial-environment
       params:
-        ENV: dijon
-        DEPLOYMENT_NAME: cf-dijon-riak-cs
-        BOSH_USER: {{initial_env_bosh_username}}
-        BOSH_PASSWORD: {{initial_env_bosh_password}}
+          ENV_TARGET_FILE: initial-environment/name
+          ENV_METADATA: initial-environment/metadata
       run:
         path: cf-riak-cs-ci/scripts/bosh/delete_deployment
 
@@ -253,8 +251,10 @@ jobs:
         - name: deployments-configuration
         - name: cf-riak-cs-ci
         - name: cf-riak-cs-release
+        - name: initial-environment
         params:
-          ENV: dijon
+          ENV_TARGET_FILE: initial-environment/name
+          ENV_METADATA: initial-environment/metadata
           DEPLOYMENTS_DIR: deployments-configuration
         run:
           path: cf-riak-cs-ci/scripts/bosh/make_manifest
@@ -279,11 +279,10 @@ jobs:
       image: *image
       inputs:
         - name: cf-riak-cs-ci
+        - name: initial-environment
       params:
-        ENV: dijon
-        BOSH_USER: {{initial_env_bosh_username}}
-        BOSH_PASSWORD: {{initial_env_bosh_password}}
-        DEPLOYMENT_NAME: cf-dijon-riak-cs
+        ENV_TARGET_FILE: initial-environment/name
+        ENV_METADATA: initial-environment/metadata
         ERRAND: broker-registrar
       run:
         path: cf-riak-cs-ci/scripts/bosh/run_errand
@@ -293,11 +292,10 @@ jobs:
       image: *image
       inputs:
         - name: cf-riak-cs-ci
+        - name: initial-environment
       params:
-        ENV: dijon
-        BOSH_USER: {{initial_env_bosh_username}}
-        BOSH_PASSWORD: {{initial_env_bosh_password}}
-        DEPLOYMENT_NAME: cf-dijon-riak-cs
+        ENV_TARGET_FILE: initial-environment/name
+        ENV_METADATA: initial-environment/metadata
         ERRAND: acceptance-tests
       run:
         path: cf-riak-cs-ci/scripts/bosh/run_errand
@@ -555,9 +553,10 @@ jobs:
         - name: deployments-configuration
         - name: cf-riak-cs-ci
         - name: cf-riak-cs-release
+        - name: integration-environment
         params:
-          ENV: a1
-          DEPLOYMENTS_DIR: deployments-configuration
+          ENV_TARGET_FILE: integration-environment/name
+          ENV_METADATA: integration-environment/metadata
         run:
           path: cf-riak-cs-ci/scripts/bosh/make_manifest
   - put: integration-deployment
@@ -581,11 +580,10 @@ jobs:
       image: *image
       inputs:
         - name: cf-riak-cs-ci
+        - name: integration-environment
       params:
-        ENV: a1
-        DEPLOYMENT_NAME: cf-a1-riak-cs
-        BOSH_USER: {{integration_env_bosh_username}}
-        BOSH_PASSWORD: {{integration_env_bosh_password}}
+        ENV_TARGET_FILE: integration-environment/name
+        ENV_METADATA: integration-environment/metadata
         ERRAND: broker-registrar
       run:
         path: cf-riak-cs-ci/scripts/bosh/run_errand
@@ -595,11 +593,10 @@ jobs:
       image: *image
       inputs:
         - name: cf-riak-cs-ci
+        - name: integration-environment
       params:
-        ENV: a1
-        DEPLOYMENT_NAME: cf-a1-riak-cs
-        BOSH_USER: {{integration_env_bosh_username}}
-        BOSH_PASSWORD: {{integration_env_bosh_password}}
+        ENV_TARGET_FILE: integration-environment/name
+        ENV_METADATA: integration-environment/metadata
         ERRAND: acceptance-tests
       run:
         path: cf-riak-cs-ci/scripts/bosh/run_errand

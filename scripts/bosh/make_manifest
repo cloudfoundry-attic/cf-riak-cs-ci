@@ -2,11 +2,16 @@
 
 set -eux
 
+: "${ENV_TARGET_FILE:?}"
+: "${ENV_METADATA:?}"
 MY_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 CI_DIR="$( cd ${MY_DIR}/../.. && pwd )"
 WORKSPACE_DIR="$( cd ${CI_DIR}/.. && pwd )"
 RELEASE_DIR="$( cd ${WORKSPACE_DIR}/cf-riak-cs-release && pwd )"
 
+source ${CI_DIR}/scripts/utils.sh
+
+ENV="$(jq_val "env" "${ENV_METADATA}")"
 # ensure DEPLOYMENTS_DIR is an absolute path
 DEPLOYMENTS_DIR="${DEPLOYMENTS_DIR:?}"
 if [[ "${DEPLOYMENTS_DIR}" != /* ]]; then

@@ -1,18 +1,24 @@
 #!/bin/bash
 
-set -eux
+set -eux -o pipefail
 
 MY_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 CI_DIR="$( cd ${MY_DIR}/../../ && pwd )"
 WORKSPACE_DIR="$( cd ${CI_DIR}/../ && pwd )"
 
-echo "ENV: ${ENV:?}"
+source ${CI_DIR}/scripts/utils.sh
 
-source ${CI_DIR}/scripts/common/check_if_deployment_exists
+: "${ENV_TARGET_FILE:?}"
+: "${ENV_METADATA:?}"
 
-bosh -n target bosh.${ENV}.cf-app.com
+BOSH_TARGET="$(cat "${ENV_TARGET_FILE}")"
+ENV="$(jq_val "env" "${ENV_METADATA}")"
+DEPLOYMENT_NAME="$(jq_val "deployment_name" "${ENV_METADATA}")"
+BOSH_USER="$(jq_val "bosh_user" "${ENV_METADATA}")"
+BOSH_PASSWORD="$(jq_val "bosh_password" "${ENV_METADATA}")"
 
-echo "DEPLOYMENT_NAME: ${DEPLOYMENT_NAME:?}"
+bosh -n target "${BOSH_TARGET}"
+bosh -n login "${BOSH_USER}" "${BOSH_PASSWORD}"
 
 set +e
 check_if_deployment_exists ${DEPLOYMENT_NAME}
