@@ -202,6 +202,7 @@ jobs:
         params:
           ENV_TARGET_FILE: initial-environment/name
           ENV_METADATA: initial-environment/metadata
+          DEPLOYMENT_NAME: cf-riak-cs
           ERRAND: broker-deregistrar
           SKIP_IF_NO_DEPLOYMENT: true
         run:
@@ -216,6 +217,7 @@ jobs:
       params:
           ENV_TARGET_FILE: initial-environment/name
           ENV_METADATA: initial-environment/metadata
+          DEPLOYMENT_NAME: cf-riak-cs
       run:
         path: cf-riak-cs-ci/scripts/bosh/delete_deployment
 
@@ -283,6 +285,7 @@ jobs:
       params:
         ENV_TARGET_FILE: initial-environment/name
         ENV_METADATA: initial-environment/metadata
+        DEPLOYMENT_NAME: cf-riak-cs
         ERRAND: broker-registrar
       run:
         path: cf-riak-cs-ci/scripts/bosh/run_errand
@@ -296,6 +299,7 @@ jobs:
       params:
         ENV_TARGET_FILE: initial-environment/name
         ENV_METADATA: initial-environment/metadata
+        DEPLOYMENT_NAME: cf-riak-cs
         ERRAND: acceptance-tests
       run:
         path: cf-riak-cs-ci/scripts/bosh/run_errand
@@ -353,6 +357,7 @@ jobs:
       params:
         ENV_TARGET_FILE: bosh-lite-environment/name
         ENV_METADATA: bosh-lite-environment/metadata
+        DEPLOYMENT_NAME: cf-riak-cs
         ERRAND: broker-deregistrar
         SKIP_IF_NO_DEPLOYMENT: true
       run:
@@ -368,6 +373,7 @@ jobs:
       params:
         ENV_TARGET_FILE: bosh-lite-environment/name
         ENV_METADATA: bosh-lite-environment/metadata
+        DEPLOYMENT_NAME: cf-riak-cs
       run:
         path: cf-riak-cs-ci/scripts/bosh/delete_deployment
 
@@ -424,6 +430,7 @@ jobs:
       params:
         ENV_TARGET_FILE: bosh-lite-environment/name
         ENV_METADATA: bosh-lite-environment/metadata
+        DEPLOYMENT_NAME: cf-riak-cs
         ERRAND: broker-registrar
       run:
         path: cf-riak-cs-ci/scripts/bosh/run_errand
@@ -449,6 +456,7 @@ jobs:
       params:
         ENV_TARGET_FILE: bosh-lite-environment/name
         ENV_METADATA: bosh-lite-environment/metadata
+        DEPLOYMENT_NAME: cf-riak-cs
         ERRAND: acceptance-tests
       run:
         path: cf-riak-cs-ci/scripts/bosh/run_errand
@@ -576,6 +584,7 @@ jobs:
       params:
         ENV_TARGET_FILE: integration-environment/name
         ENV_METADATA: integration-environment/metadata
+        DEPLOYMENT_NAME: cf-riak-cs
         ERRAND: broker-registrar
       run:
         path: cf-riak-cs-ci/scripts/bosh/run_errand
@@ -589,6 +598,7 @@ jobs:
       params:
         ENV_TARGET_FILE: integration-environment/name
         ENV_METADATA: integration-environment/metadata
+        DEPLOYMENT_NAME: cf-riak-cs
         ERRAND: acceptance-tests
       run:
         path: cf-riak-cs-ci/scripts/bosh/run_errand
