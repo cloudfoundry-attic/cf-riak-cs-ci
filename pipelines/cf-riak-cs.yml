@@ -67,7 +67,7 @@ resources:
     target: https://bosh.dijon.cf-app.com:25555
     username: {{aws_bosh_username}}
     password: {{aws_bosh_password}}
-    deployment: cf-dijon-riak-cs
+    deployment: cf-riak-cs
     ignore_ssl: true
 
 - name: integration-deployment
