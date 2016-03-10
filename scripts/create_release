@@ -6,6 +6,7 @@ MY_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 WORKSPACE_DIR="$( cd "${MY_DIR}/../.." && pwd )"
 
 RELEASE_DIR="${WORKSPACE_DIR}/${RELEASE_RELATIVE_DIR:-cf-riak-cs-release}"
+OUTPUT_DIR="${WORKSPACE_DIR}/${OUTPUT_DIR:-release-tarball}"
 
 pushd "${RELEASE_DIR}"
 
@@ -41,7 +42,8 @@ pushd "${RELEASE_DIR}"
       if [[ "${CMD_OUTPUT}" == *"Blobstore error"* ]]; then
         set -x
         ${CREATE_RELEASE}
-      else
+        cp dev_releases/cf-riak-cs/*.tgz ${OUTPUT_DIR}/
+    else
         set -x
         exit ${CMD_EXIT_CODE}
       fi

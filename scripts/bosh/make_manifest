@@ -8,6 +8,7 @@ MY_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 CI_DIR="$( cd ${MY_DIR}/../.. && pwd )"
 WORKSPACE_DIR="$( cd ${CI_DIR}/.. && pwd )"
 RELEASE_DIR="$( cd ${WORKSPACE_DIR}/cf-riak-cs-release && pwd )"
+OUTPUT_DIR="${WORKSPACE_DIR}/${OUTPUT_DIR:-deployment-manifest}"
 
 source ${CI_DIR}/scripts/utils.sh
 
@@ -33,7 +34,7 @@ pushd ${RELEASE_DIR}
     ${DEPLOYMENTS_DIR}/${ENV}/stubs/cf/cf-properties.yml \
     ${DEPLOYMENTS_DIR}/${ENV}/stubs/riak-cs/cf-riak-cs-secrets.yml \
     "$@" > deployment.yml
-
+  cp deployment.yml ${OUTPUT_DIR}/
   bosh deployment deployment.yml
   cat deployment.yml
 popd

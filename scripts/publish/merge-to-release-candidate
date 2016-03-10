@@ -2,8 +2,14 @@
 
 set -e -x
 
+MY_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+WORKSPACE_DIR="$( cd "${MY_DIR}/../../../" && pwd )"
+OUTPUT_DIR="${WORKSPACE_DIR}/${OUTPUT_DIR:-rc-repo}"
+
 cd cf-riak-cs-release
 
 git checkout release-candidate
 
 git rebase develop
+
+cp -r cf-riak-cs-release ${OUTPUT_DIR}/
