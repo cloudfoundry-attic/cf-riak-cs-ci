@@ -241,11 +241,8 @@ jobs:
         inputs:
         - name: cf-riak-cs-ci
         - name: cf-riak-cs-release
-        outputs:
-          - name: release-tarball
         params:
           RELEASE_RELATIVE_DIR: cf-riak-cs-release/
-          OUTPUT_DIR: release-tarball
         run:
           path: cf-riak-cs-ci/scripts/create_release
     - task: make-manifest
@@ -257,19 +254,16 @@ jobs:
         - name: cf-riak-cs-ci
         - name: cf-riak-cs-release
         - name: initial-environment
-        outputs:
-        - name: deployment-manifest
         params:
           ENV_TARGET_FILE: initial-environment/name
           ENV_METADATA: initial-environment/metadata
           DEPLOYMENTS_DIR: deployments-configuration
-          OUTPUT_DIR: deployment-manifest
         run:
           path: cf-riak-cs-ci/scripts/bosh/make_manifest
   - put: initial-deployment
     params:
-      manifest: deployment-manifest/deployment.yml
-      releases: [release-tarball/*.tgz]
+      manifest: make-manifest/cf-riak-cs-release/deployment.yml
+      releases: [create-release/cf-riak-cs-release/dev_releases/cf-riak-cs/*.tgz]
       stemcells: [initial-env-bosh-stemcell/*.tgz]
 
 - name: run-smoke-tests-initial
@@ -488,10 +482,7 @@ jobs:
         - name: cf-riak-cs-ci
         - name: cf-riak-cs-release
         - name: bosh-lite-environment
-        outputs:
-        - name: deployment-manifest
         params:
-          OUTPUT_DIR: deployment-manifest
           OUTPUT_FILE: cf-riak-cs-release/deployment.yml
           ENV_METADATA: bosh-lite-environment/metadata
         run:
@@ -499,8 +490,8 @@ jobs:
   - put: bosh-lite-deployment
     params:
       target_file: bosh-lite-environment/name
-      manifest: deployment-manifest/deployment.yml
-      releases: [release-tarball/*.tgz]
+      manifest: make-manifest/cf-riak-cs-release/deployment.yml
+      releases: [create-release/cf-riak-cs-release/dev_releases/cf-riak-cs/*.tgz]
       stemcells: [bosh-lite-stemcell/*.tgz]
 
 - name: smoke-tests-current-on-upgrade
@@ -563,18 +554,15 @@ jobs:
         - name: cf-riak-cs-ci
         - name: cf-riak-cs-release
         - name: integration-environment
-        outputs:
-        - name: deployment-manifest
         params:
           ENV_TARGET_FILE: integration-environment/name
           ENV_METADATA: integration-environment/metadata
-          OUTPUT_DIR: deployment-manifest
         run:
           path: cf-riak-cs-ci/scripts/bosh/make_manifest
   - put: integration-deployment
     params:
-      manifest: deployment-manifest/deployment.yml
-      releases: [release-tarball/*.tgz]
+      manifest: make-manifest/cf-riak-cs-release/deployment.yml
+      releases: [create-release/cf-riak-cs-release/dev_releases/cf-riak-cs/*.tgz]
       stemcells: [integration-env-bosh-stemcell/*.tgz]
 
 - name: run-smoke-tests-integration
@@ -642,16 +630,13 @@ jobs:
       inputs:
         - name: cf-riak-cs-ci
         - name: cf-riak-cs-release
-      outputs:
-        - name: release-tarball
       params:
         RELEASE_RELATIVE_DIR: cf-riak-cs-release
-        OUTPUT_DIR: release-tarball
       run:
         path: cf-riak-cs-ci/scripts/create_release
   - put: cf-riak-cs-rc-artifacts
     params:
-      from: release-tarball/*.tgz
+      from: create-rc-release-artifacts\/cf-riak-cs-release\/dev_releases\/cf-riak-cs\/cf-riak-cs.*\.tgz
       to: release-candidate/
 
 - name: promote-to-rc
@@ -670,14 +655,10 @@ jobs:
       inputs:
         - name: cf-riak-cs-ci
         - name: cf-riak-cs-release
-      outputs:
-        - name: rc-repo
-      params:
-        OUTPUT_DIR: rc-repo
       run:
         path: cf-riak-cs-ci/scripts/publish/merge-to-release-candidate
   - put: cf-riak-cs-release-rc
     params:
-      repository: rc-repo/cf-riak-cs-release
+      repository: merge-to-release-candidate/cf-riak-cs-release
 
 groups: [{name: cf-riak-cs, jobs: [push-docker-image,test-unit,test-sample-stubs,claim-initial-environment,release-initial-environment-manual,delete-initial-deployment,deploy-to-initial,run-smoke-tests-initial,release-aws-environmment,claim-bosh-lite-upgrade,release-upgrade-environment-manual,delete-upgrade-deployment,deploy-previous-to-upgrade,broker-registrar-previous-on-upgrade,smoke-tests-previous-on-upgrade,deploy-current-to-upgrade,smoke-tests-current-on-upgrade,release-upgrade-environment,claim-integration-environment,deploy-to-integration,run-smoke-tests-integration,release-integration-environment,upload-rc-artifacts,promote-to-rc]}]
