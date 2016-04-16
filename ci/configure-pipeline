@@ -20,7 +20,7 @@ set_pipeline_name() {
   else
     PIPELINE_NAME=cf-riak-cs-${PIPELINE_SUFFIX}
   fi
-  PIPELINE_PATH=${MY_DIR}/${PIPELINE_NAME}.yml
+  PIPELINE_PATH=${MY_DIR}/pipelines/${PIPELINE_NAME}.yml
 }
 
 get_jobs() {
