@@ -4,6 +4,7 @@ set -ex
 
 MY_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 WORKSPACE_DIR="$( cd "${MY_DIR}/../.." && pwd )"
+OUTPUT_DIR="${WORKSPACE_DIR}/${OUTPUT_DIR:?}"
 
 RELEASE_DIR="${WORKSPACE_DIR}/${RELEASE_RELATIVE_DIR:-cf-riak-cs-release}"
 
@@ -46,4 +47,6 @@ pushd "${RELEASE_DIR}"
         exit ${CMD_EXIT_CODE}
       fi
     fi
+
+    cp dev_releases/cf-riak-cs/*.tgz "${OUTPUT_DIR}/"
 popd
