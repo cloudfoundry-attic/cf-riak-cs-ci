@@ -603,7 +603,7 @@ jobs:
       params:
         ENV_TARGET_FILE: integration-environment/name
         ENV_METADATA: integration-environment/metadata
-        DEPLOYMENT_NAME: cf-riak-cs
+        DEPLOYMENT_NAME: cf-a1-riak-cs
         ERRAND: broker-registrar
       run:
         path: cf-riak-cs-ci/scripts/bosh/run_errand
@@ -617,7 +617,7 @@ jobs:
       params:
         ENV_TARGET_FILE: integration-environment/name
         ENV_METADATA: integration-environment/metadata
-        DEPLOYMENT_NAME: cf-riak-cs
+        DEPLOYMENT_NAME: cf-a1-riak-cs
         ERRAND: acceptance-tests
       run:
         path: cf-riak-cs-ci/scripts/bosh/run_errand
