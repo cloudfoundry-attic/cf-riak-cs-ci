@@ -192,7 +192,7 @@ jobs:
       passed: [claim-initial-environment]
       trigger: true
     - get: cf-riak-cs-ci
-  - try: 
+  - try:
       task: run-broker-deregistrar
       config:
         platform: *platform
@@ -442,7 +442,7 @@ jobs:
       params:
         ENV_TARGET_FILE: bosh-lite-environment/name
         ENV_METADATA: bosh-lite-environment/metadata
-        DEPLOYMENT_NAME: cf-riak-cs
+        DEPLOYMENT_NAME: cf-warden-riak-cs
         ERRAND: broker-registrar
       run:
         path: cf-riak-cs-ci/scripts/bosh/run_errand
@@ -468,7 +468,7 @@ jobs:
       params:
         ENV_TARGET_FILE: bosh-lite-environment/name
         ENV_METADATA: bosh-lite-environment/metadata
-        DEPLOYMENT_NAME: cf-riak-cs
+        DEPLOYMENT_NAME: cf-warden-riak-cs
         ERRAND: acceptance-tests
       run:
         path: cf-riak-cs-ci/scripts/bosh/run_errand
@@ -573,6 +573,7 @@ jobs:
           ENV_TARGET_FILE: integration-environment/name
           ENV_METADATA: integration-environment/metadata
           OUTPUT_DIR: deployment-manifest
+          DEPLOYMENTS_DIR: deployments-configuration
         run:
           path: cf-riak-cs-ci/scripts/bosh/make_manifest
         outputs:
