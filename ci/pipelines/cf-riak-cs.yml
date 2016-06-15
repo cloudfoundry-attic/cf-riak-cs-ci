@@ -175,12 +175,13 @@ jobs:
 
 - name: release-initial-environment-manual
   plan:
-  - aggregate:
-    - get: initial-environment
+  - try:
+      get: initial-environment
       passed: [claim-initial-environment]
-  - put: initial-environment
-    params:
-      release: initial-environment
+      on_success:
+        put: initial-environment
+        params:
+          release: initial-environment
 
 - name: delete-initial-deployment
   plan:
@@ -335,12 +336,13 @@ jobs:
 
 - name: release-upgrade-environment-manual
   plan:
-  - aggregate:
-    - get: bosh-lite-environment
+  - try:
+      get: bosh-lite-environment
       passed: [claim-bosh-lite-upgrade]
-  - put: bosh-lite-environment
-    params:
-      release: bosh-lite-environment
+      on_success:
+        put: bosh-lite-environment
+        params:
+          release: bosh-lite-environment
 
 - name: delete-upgrade-deployment
   plan:
