@@ -2,8 +2,16 @@
 
 set -e -x
 
-cd cf-riak-cs-release
+OUTPUT_DIR="${OUTPUT_DIR:?}"
 
-git checkout release-candidate
+mkdir -p ${OUTPUT_DIR}
 
-git rebase develop
+pushd cf-riak-cs-release
+
+  git checkout release-candidate
+
+  git rebase develop
+
+popd
+
+cp  -r cf-riak-cs-release ${OUTPUT_DIR}/
