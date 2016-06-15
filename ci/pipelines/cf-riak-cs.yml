@@ -389,6 +389,8 @@ jobs:
     - get: cf-riak-cs-ci
     - get: cf-riak-cs-release
       resource: cf-riak-cs-release-master
+      params:
+        submodules: none
     - get: bosh-lite-stemcell
     - get: bosh-lite-environment
       passed: [delete-upgrade-deployment]
