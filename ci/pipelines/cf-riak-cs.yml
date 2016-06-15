@@ -658,8 +658,7 @@ jobs:
       - name: release-tarball
   - put: cf-riak-cs-rc-artifacts
     params:
-      from: release-tarball/*.tgz
-      to: release-candidate/
+      file: release-tarball/*.tgz
 
 - name: promote-to-rc
   plan:
