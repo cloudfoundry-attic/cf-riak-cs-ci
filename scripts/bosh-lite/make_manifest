@@ -10,6 +10,9 @@ MY_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 CI_DIR="$( cd ${MY_DIR}/../.. && pwd )"
 WORKSPACE_DIR="$( cd ${CI_DIR}/.. && pwd )"
 RELEASE_DIR="$( cd ${WORKSPACE_DIR}/cf-riak-cs-release && pwd )"
+OUTPUT_DIR="${WORKSPACE_DIR}/${OUTPUT_DIR:=deployment-manifest}"
+
+mkdir -p ${OUTPUT_DIR}
 
 source "$CI_DIR/scripts/utils.sh"
 
@@ -54,4 +57,4 @@ ${RELEASE_DIR}/generate_deployment_manifest \
   warden \
   ${RIAK_STUB_MODIFIED} \
   ${CUSTOM_CI_STUB} \
-  "$@" > ${WORKSPACE_DIR}/${OUTPUT_FILE}
+  "$@" > ${OUTPUT_DIR}/${OUTPUT_FILE}
