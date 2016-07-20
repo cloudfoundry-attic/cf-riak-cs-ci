@@ -103,7 +103,7 @@ jobs:
           - final-release/release-artifacts/*.tgz
       - put: s3-resource-final-release
         params:
-          from: final\-release\/release\-artifacts\/.*\.tgz
+          from: final-release/release-artifacts/*.tgz
           to: final\/
 
 groups: [{name: cf-riak-cs-final, jobs: [final-release]}]
