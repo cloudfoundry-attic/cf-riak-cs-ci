@@ -62,7 +62,10 @@ jobs:
       - task: final-release
         config:
           platform: linux
-          image: docker:///cloudfoundry/cf-riak-cs-ci
+          image_resource: &image_resource
+            type: docker-image
+            source:
+              repository: cloudfoundry/cf-riak-cs-ci
           inputs:
           - name: cf-riak-cs-ci
           - name: cf-riak-cs-master
@@ -81,7 +84,7 @@ jobs:
       - task: merge-master-into-develop
         config:
           platform: linux
-          image: docker:///cloudfoundry/cf-riak-cs-ci
+          image_resource: *image_resource
           inputs:
           - name: cf-riak-cs-ci
           - name: final-release

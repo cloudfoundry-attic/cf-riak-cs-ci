@@ -143,7 +143,10 @@ jobs:
   - task: test-unit
     config:
       platform: &platform linux
-      image: &image docker:///cloudfoundry/cf-riak-cs-ci
+      image_resource: &image_resource
+        type: docker-image
+        source:
+          repository: cloudfoundry/cf-riak-cs-ci
       inputs:
       - name: cf-riak-cs-release
       run:
@@ -157,7 +160,7 @@ jobs:
   - task: test-sample-stubs
     config:
       platform: *platform
-      image: *image
+      image_resource: *image_resource
       inputs:
       - name: cf-riak-cs-release
       run:
@@ -196,7 +199,7 @@ jobs:
       task: run-broker-deregistrar
       config:
         platform: *platform
-        image: *image
+        image_resource: *image_resource
         inputs:
         - name: cf-riak-cs-ci
         - name: initial-environment
@@ -211,7 +214,7 @@ jobs:
   - task: delete-initial-deployment
     config:
       platform: *platform
-      image: *image
+      image_resource: *image_resource
       inputs:
       - name: cf-riak-cs-ci
       - name: initial-environment
@@ -238,7 +241,7 @@ jobs:
       task: create-release
       config:
         platform: *platform
-        image: *image
+        image_resource: *image_resource
         inputs:
         - name: cf-riak-cs-ci
         - name: cf-riak-cs-release
@@ -252,7 +255,7 @@ jobs:
     - task: make-manifest
       config:
         platform: *platform
-        image: *image
+        image_resource: *image_resource
         inputs:
         - name: deployments-configuration
         - name: cf-riak-cs-ci
@@ -285,7 +288,7 @@ jobs:
   - task: run-broker-registrar
     config:
       platform: *platform
-      image: *image
+      image_resource: *image_resource
       inputs:
         - name: cf-riak-cs-ci
         - name: initial-environment
@@ -299,7 +302,7 @@ jobs:
   - task: run-smoke-tests
     config:
       platform: *platform
-      image: *image
+      image_resource: *image_resource
       inputs:
         - name: cf-riak-cs-ci
         - name: initial-environment
@@ -358,7 +361,7 @@ jobs:
     task: run-broker-deregistrar
     config:
       platform: *platform
-      image: *image
+      image_resource: *image_resource
       inputs:
         - name: bosh-lite-environment
         - name: cf-riak-cs-ci
@@ -374,7 +377,7 @@ jobs:
     task: delete-deployment
     config:
       platform: *platform
-      image: *image
+      image_resource: *image_resource
       inputs:
         - name: bosh-lite-environment
         - name: cf-riak-cs-ci
@@ -401,7 +404,7 @@ jobs:
   - task: make-manifest-previous
     config:
       platform: *platform
-      image: *image
+      image_resource: *image_resource
       inputs:
       - name: cf-riak-cs-ci
       - name: cf-riak-cs-release
@@ -435,7 +438,7 @@ jobs:
     task: run-broker-registrar
     config:
       platform: *platform
-      image: *image
+      image_resource: *image_resource
       inputs:
         - name: cf-riak-cs-ci
         - name: bosh-lite-environment
@@ -461,7 +464,7 @@ jobs:
     task: run-smoke-tests
     config:
       platform: *platform
-      image: *image
+      image_resource: *image_resource
       inputs:
         - name: cf-riak-cs-ci
         - name: bosh-lite-environment
@@ -489,7 +492,7 @@ jobs:
     - task: make-manifest
       config:
         platform: *platform
-        image: *image
+        image_resource: *image_resource
         inputs:
         - name: cf-riak-cs-ci
         - name: cf-riak-cs-release
@@ -563,7 +566,7 @@ jobs:
     - task: make-manifest
       config:
         platform: *platform
-        image: *image
+        image_resource: *image_resource
         inputs:
         - name: deployments-configuration
         - name: cf-riak-cs-ci
@@ -596,7 +599,7 @@ jobs:
   - task: run-broker-registrar
     config:
       platform: *platform
-      image: *image
+      image_resource: *image_resource
       inputs:
         - name: cf-riak-cs-ci
         - name: integration-environment
@@ -610,7 +613,7 @@ jobs:
   - task: run-smoke-tests
     config:
       platform: *platform
-      image: *image
+      image_resource: *image_resource
       inputs:
         - name: cf-riak-cs-ci
         - name: integration-environment
@@ -645,7 +648,7 @@ jobs:
   - task: create-rc-release-artifacts
     config:
       platform: *platform
-      image: *image
+      image_resource: *image_resource
       inputs:
         - name: cf-riak-cs-ci
         - name: cf-riak-cs-release
@@ -672,7 +675,7 @@ jobs:
   - task: merge-to-release-candidate
     config:
       platform: *platform
-      image: *image
+      image_resource: *image_resource
       inputs:
         - name: cf-riak-cs-ci
         - name: cf-riak-cs-release
