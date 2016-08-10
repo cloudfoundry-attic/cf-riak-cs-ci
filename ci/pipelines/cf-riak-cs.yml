@@ -64,7 +64,6 @@ resources:
 - name: initial-deployment
   type: bosh-deployment
   source:  
-    target: https://bosh.dijon.cf-app.com:25555
     username: {{aws_bosh_username}}
     password: {{aws_bosh_password}}
     deployment: cf-riak-cs
@@ -73,7 +72,6 @@ resources:
 - name: integration-deployment
   type: bosh-deployment
   source:
-    target: https://bosh.a1.cf-app.com:25555
     username: {{integration_env_bosh_username}}
     password: {{integration_env_bosh_password}}
     deployment: cf-a1-riak-cs
@@ -275,6 +273,7 @@ jobs:
       manifest: deployment-manifest/deployment.yml
       releases: [release-tarball/*.tgz]
       stemcells: [initial-env-bosh-stemcell/*.tgz]
+      target_file: initial-environment/name
 
 - name: run-smoke-tests-initial
   plan:
@@ -586,6 +585,7 @@ jobs:
       manifest: deployment-manifest/deployment.yml
       releases: [release-tarball/*.tgz]
       stemcells: [integration-env-bosh-stemcell/*.tgz]
+      target_file: integration-environment/name
 
 - name: run-smoke-tests-integration
   plan:
