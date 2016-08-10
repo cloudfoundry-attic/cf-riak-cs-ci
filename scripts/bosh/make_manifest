@@ -31,6 +31,8 @@ pushd ${RELEASE_DIR}
     ${DEPLOYMENTS_DIR}/${ENV}/stubs/cf/cf-networks-stub.yml \
     ${DEPLOYMENTS_DIR}/${ENV}/stubs/cf/cf-shared-secrets.yml \
     ${DEPLOYMENTS_DIR}/${ENV}/stubs/cf/cf-properties.yml \
+    ${DEPLOYMENTS_DIR}/${ENV}/stubs/riak-cs/iaas-settings.yml \
+    ${DEPLOYMENTS_DIR}/${ENV}/stubs/riak-cs/property-overrides.yml \
     ${DEPLOYMENTS_DIR}/${ENV}/stubs/riak-cs/cf-riak-cs-secrets.yml \
     "$@" > deployment.yml
 
