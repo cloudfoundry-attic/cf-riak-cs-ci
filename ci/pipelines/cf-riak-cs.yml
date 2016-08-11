@@ -21,11 +21,6 @@ resources:
   source:
     name: bosh-aws-xen-hvm-ubuntu-trusty-go_agent
 
-- name: integration-env-bosh-stemcell
-  type: bosh-io-stemcell
-  source:
-    name: bosh-aws-xen-hvm-ubuntu-trusty-go_agent
-
 - name: bosh-lite-stemcell
   type: bosh-io-stemcell
   source:
@@ -69,28 +64,12 @@ resources:
     deployment: cf-riak-cs
     ignore_ssl: true
 
-- name: integration-deployment
-  type: bosh-deployment
-  source:
-    username: {{integration_env_bosh_username}}
-    password: {{integration_env_bosh_password}}
-    deployment: cf-a1-riak-cs
-    ignore_ssl: true
-
 - name: initial-environment
   type: pool
   source:
     uri: &pool-uri git@github.com:pivotal-cf-experimental/core-services-oss-env-resource-pool
     branch: master
     pool: aws
-    private_key: {{git-writer-private-key}}
-
-- name: integration-environment
-  type: pool
-  source:
-    uri: *pool-uri
-    branch: master
-    pool: aws-integration
     private_key: {{git-writer-private-key}}
 
 - name: bosh-lite-environment
@@ -536,113 +515,11 @@ jobs:
     params:
       release: bosh-lite-environment
 
-### INTEGRATION DEPLOY
-- name: claim-integration-environment
-  plan:
-  - aggregate:
-    - get: cf-riak-cs-release
-      passed: [release-upgrade-environment]
-      trigger: true
-  - put: integration-environment
-    params:
-      acquire: true
-
-- name: deploy-to-integration
-  serial: true
-  plan:
-  - aggregate:
-    - get: deployments-configuration
-    - get: cf-riak-cs-ci
-    - get: cf-riak-cs-release
-      passed: [claim-integration-environment]
-      trigger: true
-    - get: integration-env-bosh-stemcell
-    - get: integration-environment
-      passed: [claim-integration-environment]
-      trigger: true
-  - aggregate:
-    - *create-release
-    - task: make-manifest
-      config:
-        platform: *platform
-        image_resource: *image_resource
-        inputs:
-        - name: deployments-configuration
-        - name: cf-riak-cs-ci
-        - name: cf-riak-cs-release
-        - name: integration-environment
-        params:
-          ENV_TARGET_FILE: integration-environment/name
-          ENV_METADATA: integration-environment/metadata
-          OUTPUT_DIR: deployment-manifest
-          DEPLOYMENTS_DIR: deployments-configuration
-        run:
-          path: cf-riak-cs-ci/scripts/bosh/make_manifest
-        outputs:
-        - name: deployment-manifest
-  - put: integration-deployment
-    params:
-      manifest: deployment-manifest/deployment.yml
-      releases: [release-tarball/*.tgz]
-      stemcells: [integration-env-bosh-stemcell/*.tgz]
-      target_file: integration-environment/name
-
-- name: run-smoke-tests-integration
-  plan:
-  - aggregate:
-    - get: integration-environment
-      passed: [deploy-to-integration]
-    - get: cf-riak-cs-release
-      passed: [deploy-to-integration]
-      trigger: true
-    - get: cf-riak-cs-ci
-  - task: run-broker-registrar
-    config:
-      platform: *platform
-      image_resource: *image_resource
-      inputs:
-        - name: cf-riak-cs-ci
-        - name: integration-environment
-      params:
-        ENV_TARGET_FILE: integration-environment/name
-        ENV_METADATA: integration-environment/metadata
-        DEPLOYMENT_NAME: cf-a1-riak-cs
-        ERRAND: broker-registrar
-      run:
-        path: cf-riak-cs-ci/scripts/bosh/run_errand
-  - task: run-smoke-tests
-    config:
-      platform: *platform
-      image_resource: *image_resource
-      inputs:
-        - name: cf-riak-cs-ci
-        - name: integration-environment
-      params:
-        ENV_TARGET_FILE: integration-environment/name
-        ENV_METADATA: integration-environment/metadata
-        DEPLOYMENT_NAME: cf-a1-riak-cs
-        ERRAND: acceptance-tests
-      run:
-        path: cf-riak-cs-ci/scripts/bosh/run_errand
-
-- name: release-integration-environment
-  plan:
-  - aggregate:
-    - get: cf-riak-cs-release
-      passed: [run-smoke-tests-integration]
-      trigger: true
-    - get: integration-environment
-      passed: [run-smoke-tests-integration]
-      trigger: true
-  - put: integration-environment
-    params:
-      release: integration-environment
-
 - name: upload-rc-artifacts
   plan:
   - aggregate:
     - get: cf-riak-cs-release
-      passed: [run-smoke-tests-integration]
+      passed: [smoke-tests-current-on-upgrade]
       trigger: true
     - get: cf-riak-cs-ci
   - task: create-rc-release-artifacts
@@ -667,7 +544,7 @@ jobs:
   plan:
   - aggregate:
     - get: cf-riak-cs-release
-      passed: [run-smoke-tests-integration]
+      passed: [smoke-tests-current-on-upgrade]
       trigger: true
       params:
         fetch: [release-candidate]
@@ -689,4 +566,4 @@ jobs:
     params:
       repository: rc-repo/cf-riak-cs-release
 
-groups: [{name: cf-riak-cs, jobs: [push-docker-image,test-unit,test-sample-stubs,claim-initial-environment,release-initial-environment-manual,delete-initial-deployment,deploy-to-initial,run-smoke-tests-initial,release-aws-environmment,claim-bosh-lite-upgrade,release-upgrade-environment-manual,delete-upgrade-deployment,deploy-previous-to-upgrade,broker-registrar-previous-on-upgrade,smoke-tests-previous-on-upgrade,deploy-current-to-upgrade,smoke-tests-current-on-upgrade,release-upgrade-environment,claim-integration-environment,deploy-to-integration,run-smoke-tests-integration,release-integration-environment,upload-rc-artifacts,promote-to-rc]}]
+groups: [{name: cf-riak-cs, jobs: [push-docker-image,test-unit,test-sample-stubs,claim-initial-environment,release-initial-environment-manual,delete-initial-deployment,deploy-to-initial,run-smoke-tests-initial,release-aws-environmment,claim-bosh-lite-upgrade,release-upgrade-environment-manual,delete-upgrade-deployment,deploy-previous-to-upgrade,broker-registrar-previous-on-upgrade,smoke-tests-previous-on-upgrade,deploy-current-to-upgrade,smoke-tests-current-on-upgrade,release-upgrade-environment,upload-rc-artifacts,promote-to-rc]}]
