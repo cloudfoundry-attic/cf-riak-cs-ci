@@ -97,7 +97,7 @@ resources:
   type: s3
   source:
     bucket: cf-riak-cs-releases
-    regexp: release-candidate\/cf-riak-cs-.*\.tgz
+    regexp: release-candidate/cf-riak-cs-(\d+\.\d+)\+.*.tgz
     access_key_id: {{cf-riak-cs-ci-aws-access-key-id}}
     secret_access_key: {{cf-riak-cs-ci-aws-secret-access-key}}
 
