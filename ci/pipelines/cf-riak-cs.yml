@@ -156,10 +156,10 @@ jobs:
 - name: release-initial-environment-manual
   plan:
   - try:
-      get: initial-environment
-      passed: [claim-initial-environment]
-      on_success:
-        put: initial-environment
+      do:
+      - get: initial-environment
+        passed: [claim-initial-environment]
+      - put: initial-environment
         params:
           release: initial-environment
 
@@ -318,10 +318,10 @@ jobs:
 - name: release-upgrade-environment-manual
   plan:
   - try:
-      get: bosh-lite-environment
-      passed: [claim-bosh-lite-upgrade]
-      on_success:
-        put: bosh-lite-environment
+      do:
+      - get: bosh-lite-environment
+        passed: [claim-bosh-lite-upgrade]
+      - put: bosh-lite-environment
         params:
           release: bosh-lite-environment
 
