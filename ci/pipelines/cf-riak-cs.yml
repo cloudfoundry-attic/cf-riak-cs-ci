@@ -16,7 +16,7 @@ resources:
     paths:
     - scripts/Dockerfile
 
-- name: initial-env-bosh-stemcell
+- name: aws-bosh-stemcell
   type: bosh-io-stemcell
   source:
     name: bosh-aws-xen-hvm-ubuntu-trusty-go_agent
@@ -36,6 +36,11 @@ resources:
   type: git
   source:
     uri: https://github.com/cloudfoundry-incubator/cf-riak-cs-ci.git
+
+- name: cf-mysql-ci
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry-incubator/cf-mysql-ci.git
 
 - name: cf-riak-cs-release
   type: git
@@ -78,6 +83,14 @@ resources:
     uri: *pool-uri
     branch: master
     pool: bosh-lites-working
+    private_key: {{git-writer-private-key}}
+
+- name: compiled-packages-lock
+  type: pool
+  source:
+    uri: *pool-uri
+    branch: master
+    pool: compiled-packages
     private_key: {{git-writer-private-key}}
 
 - name: bosh-lite-deployment
@@ -168,9 +181,10 @@ jobs:
   - aggregate:
     - get: initial-environment
       passed: [claim-initial-environment]
+      trigger: true
+      version: every
     - get: cf-riak-cs-release
       passed: [claim-initial-environment]
-      trigger: true
     - get: cf-riak-cs-ci
   - try:
       task: run-broker-deregistrar
@@ -207,12 +221,14 @@ jobs:
   - aggregate:
     - get: deployments-configuration
     - get: cf-riak-cs-ci
+    - get: cf-mysql-ci
     - get: cf-riak-cs-release
       passed: [delete-initial-deployment]
-      trigger: true
-    - get: initial-env-bosh-stemcell
+    - get: aws-bosh-stemcell
     - get: initial-environment
       passed: [delete-initial-deployment]
+      trigger: true
+      version: every
   - aggregate:
     - &create-release
       task: create-release
@@ -247,11 +263,34 @@ jobs:
           path: cf-riak-cs-ci/scripts/bosh/make_manifest
         outputs:
         - name: deployment-manifest
+  - put: compiled-packages-lock
+    params:
+      acquire: true
+  - task: compile-release
+    config:
+      platform: *platform
+      image_resource: *image_resource
+      inputs:
+      - name: cf-mysql-ci
+      - name: release-tarball
+      - name: aws-bosh-stemcell
+      outputs:
+      - name: compiled-release-tarball
+      params:
+        BOSH_USERNAME: {{bosh_compilation_username}}
+        BOSH_PASSWORD: {{bosh_compilation_password}}
+        BOSH_DIRECTOR: {{bosh_compilation_director}}
+      run:
+        path: cf-mysql-ci/scripts/compile_release
+    ensure:
+      put: compiled-packages-lock
+      params:
+        release: compiled-packages-lock
   - put: initial-deployment
     params:
       manifest: deployment-manifest/deployment.yml
-      releases: [release-tarball/*.tgz]
-      stemcells: [initial-env-bosh-stemcell/*.tgz]
+      releases: [compiled-release-tarball/*.tgz]
+      stemcells: [aws-bosh-stemcell/*.tgz]
       target_file: initial-environment/name
 
 - name: run-smoke-tests-initial
@@ -259,9 +298,10 @@ jobs:
   - aggregate:
     - get: initial-environment
       passed: [deploy-to-initial]
+      trigger: true
+      version: every
     - get: cf-riak-cs-release
       passed: [deploy-to-initial]
-      trigger: true
     - get: cf-riak-cs-ci
   - task: run-broker-registrar
     config:
@@ -330,29 +370,28 @@ jobs:
   - aggregate:
     - get: cf-riak-cs-release
       passed: [claim-bosh-lite-upgrade]
-      trigger: true
     - get: bosh-lite-environment
       passed: [claim-bosh-lite-upgrade]
       trigger: true
+      version: every
     - get: cf-riak-cs-ci
-  - &broker-deregistrar-bosh-lite
-    task: run-broker-deregistrar
-    config:
-      platform: *platform
-      image_resource: *image_resource
-      inputs:
-        - name: bosh-lite-environment
-        - name: cf-riak-cs-ci
-      params:
-        ENV_TARGET_FILE: bosh-lite-environment/name
-        ENV_METADATA: bosh-lite-environment/metadata
-        DEPLOYMENT_NAME: cf-riak-cs
-        ERRAND: broker-deregistrar
-        SKIP_IF_NO_DEPLOYMENT: true
-      run:
-        path: cf-riak-cs-ci/scripts/bosh/run_errand
-  - &delete-deployment-bosh-lite
-    task: delete-deployment
+  - try:
+      task: run-broker-deregistrar
+      config:
+        platform: *platform
+        image_resource: *image_resource
+        inputs:
+          - name: bosh-lite-environment
+          - name: cf-riak-cs-ci
+        params:
+          ENV_TARGET_FILE: bosh-lite-environment/name
+          ENV_METADATA: bosh-lite-environment/metadata
+          DEPLOYMENT_NAME: cf-riak-cs
+          ERRAND: broker-deregistrar
+          SKIP_IF_NO_DEPLOYMENT: true
+        run:
+          path: cf-riak-cs-ci/scripts/bosh/run_errand
+  - task: delete-deployment
     config:
       platform: *platform
       image_resource: *image_resource
@@ -370,15 +409,19 @@ jobs:
   plan:
   - aggregate:
     - get: cf-riak-cs-ci
+    - get: cf-mysql-ci
     - get: cf-riak-cs-release
       resource: cf-riak-cs-release-master
       params:
         submodules: none
     - get: bosh-lite-stemcell
+    - get: aws-bosh-stemcell
     - get: bosh-lite-environment
       passed: [delete-upgrade-deployment]
       trigger: true
-    - get: cf-riak-cs-final-release
+      version: every
+    - get: release-tarball
+      resource: cf-riak-cs-final-release
   - task: make-manifest-previous
     config:
       platform: *platform
@@ -395,11 +438,34 @@ jobs:
         path: cf-riak-cs-ci/scripts/bosh-lite/make_manifest
       outputs:
       - name: deployment-manifest
+  - put: compiled-packages-lock
+    params:
+      acquire: true
+  - task: compile-release
+    config:
+      platform: *platform
+      image_resource: *image_resource
+      inputs:
+      - name: cf-mysql-ci
+      - name: release-tarball
+      - name: aws-bosh-stemcell
+      outputs:
+      - name: compiled-release-tarball
+      params:
+        BOSH_USERNAME: {{bosh_compilation_username}}
+        BOSH_PASSWORD: {{bosh_compilation_password}}
+        BOSH_DIRECTOR: {{bosh_compilation_director}}
+      run:
+        path: cf-mysql-ci/scripts/compile_release
+    ensure:
+      put: compiled-packages-lock
+      params:
+        release: compiled-packages-lock
   - put: bosh-lite-deployment
     params:
       target_file: bosh-lite-environment/name
       manifest: deployment-manifest/deployment.yml
-      releases: [cf-riak-cs-final-release/release.tgz]
+      releases: [compiled-release-tarball/*.tgz]
       stemcells: [bosh-lite-stemcell/*.tgz]
 
 - name: broker-registrar-previous-on-upgrade
@@ -412,6 +478,7 @@ jobs:
     - get: bosh-lite-environment
       passed: [deploy-previous-to-upgrade]
       trigger: true
+      version: every
   - &broker-registrar-bosh-lite
     task: run-broker-registrar
     config:
@@ -434,10 +501,10 @@ jobs:
     - get: cf-riak-cs-ci
     - get: cf-riak-cs-release
       passed: [broker-registrar-previous-on-upgrade]
-      trigger: true
     - get: bosh-lite-environment
       passed: [broker-registrar-previous-on-upgrade]
       trigger: true
+      version: every
   - &smoke-tests-bosh-lite
     task: run-smoke-tests
     config:
@@ -458,13 +525,15 @@ jobs:
   plan:
   - aggregate:
     - get: cf-riak-cs-ci
+    - get: cf-mysql-ci
     - get: cf-riak-cs-release
       passed: [smoke-tests-previous-on-upgrade]
-      trigger: true
     - get: bosh-lite-stemcell
+    - get: aws-bosh-stemcell
     - get: bosh-lite-environment
       passed: [smoke-tests-previous-on-upgrade]
       trigger: true
+      version: every
   - aggregate:
     - *create-release
     - task: make-manifest
@@ -483,11 +552,34 @@ jobs:
           path: cf-riak-cs-ci/scripts/bosh-lite/make_manifest
         outputs:
         - name: deployment-manifest
+  - put: compiled-packages-lock
+    params:
+      acquire: true
+  - task: compile-release
+    config:
+      platform: *platform
+      image_resource: *image_resource
+      inputs:
+      - name: cf-mysql-ci
+      - name: release-tarball
+      - name: aws-bosh-stemcell
+      outputs:
+      - name: compiled-release-tarball
+      params:
+        BOSH_USERNAME: {{bosh_compilation_username}}
+        BOSH_PASSWORD: {{bosh_compilation_password}}
+        BOSH_DIRECTOR: {{bosh_compilation_director}}
+      run:
+        path: cf-mysql-ci/scripts/compile_release
+    ensure:
+      put: compiled-packages-lock
+      params:
+        release: compiled-packages-lock
   - put: bosh-lite-deployment
     params:
       target_file: bosh-lite-environment/name
       manifest: deployment-manifest/deployment.yml
-      releases: [release-tarball/*.tgz]
+      releases: [compiled-release-tarball/*.tgz]
       stemcells: [bosh-lite-stemcell/*.tgz]
 
 - name: smoke-tests-current-on-upgrade
@@ -496,10 +588,10 @@ jobs:
     - get: cf-riak-cs-ci
     - get: cf-riak-cs-release
       passed: [deploy-current-to-upgrade]
-      trigger: true
     - get: bosh-lite-environment
       passed: [deploy-current-to-upgrade]
       trigger: true
+      version: every
   - *smoke-tests-bosh-lite
 
 - name: release-upgrade-environment
@@ -507,10 +599,10 @@ jobs:
   - aggregate:
     - get: cf-riak-cs-release
       passed: [smoke-tests-current-on-upgrade]
-      trigger: true
     - get: bosh-lite-environment
       passed: [smoke-tests-current-on-upgrade]
       trigger: true
+      version: every
   - put: bosh-lite-environment
     params:
       release: bosh-lite-environment
